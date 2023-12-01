@@ -47,7 +47,8 @@ func run(args []string) error {
 	ios, _, _, _ := iostreams.Test()
 	rootCmd, _ := root.NewCmdRoot(&cmdutil.Factory{
 		IOStreams: ios,
-		Browser:   &browser{},
+
+		Browser: &browser{},
 		Config: func() (config.Config, error) {
 			return config.NewFromString(""), nil
 		},

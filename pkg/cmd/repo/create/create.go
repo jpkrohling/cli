@@ -23,6 +23,7 @@ import (
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 )
 
 type errWithExitCode interface {
@@ -105,6 +106,10 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: []string{"new"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			tracer := otel.Tracer("github.com/cli/cli")
+			ctx, span := tracer.Start(cmd.Context(), "repo create")
+			defer span.End()
+
 			if len(args) > 0 {
 				opts.Name = args[0]
 			}
@@ -175,7 +180,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			if runF != nil {
 				return runF(opts)
 			}
-			return createRun(opts)
+			return createRun(ctx, opts)
 		},
 	}
 
@@ -247,7 +252,7 @@ func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	return cmd
 }
 
-func createRun(opts *CreateOptions) error {
+func createRun(ctx context.Context, opts *CreateOptions) error {
 	if opts.Interactive {
 		answer, err := opts.Prompter.Select("What would you like to do?", "", []string{
 			"Create a new repository on GitHub from scratch",
@@ -259,22 +264,25 @@ func createRun(opts *CreateOptions) error {
 		}
 		switch answer {
 		case 0:
-			return createFromScratch(opts)
+			return createFromScratch(ctx, opts)
 		case 1:
-			return createFromTemplate(opts)
+			return createFromTemplate(ctx, opts)
 		case 2:
-			return createFromLocal(opts)
+			return createFromLocal(ctx, opts)
 		}
 	}
 
 	if opts.Source == "" {
-		return createFromScratch(opts)
+		return createFromScratch(ctx, opts)
 	}
-	return createFromLocal(opts)
+	return createFromLocal(ctx, opts)
 }
 
 // create new repo on remote host
-func createFromScratch(opts *CreateOptions) error {
+func createFromScratch(ctx context.Context, opts *CreateOptions) error {
+	_, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromScratch")
+	defer span.End()
+
 	httpClient, err := opts.HttpClient()
 	if err != nil {
 		return err
@@ -413,7 +421,10 @@ func createFromScratch(opts *CreateOptions) error {
 }
 
 // create new repo on remote host from template repo
-func createFromTemplate(opts *CreateOptions) error {
+func createFromTemplate(ctx context.Context, opts *CreateOptions) error {
+	_, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromTemplate")
+	defer span.End()
+
 	httpClient, err := opts.HttpClient()
 	if err != nil {
 		return err
@@ -504,7 +515,10 @@ func createFromTemplate(opts *CreateOptions) error {
 }
 
 // create repo on remote host from existing local repo
-func createFromLocal(opts *CreateOptions) error {
+func createFromLocal(ctx context.Context, opts *CreateOptions) error {
+	_, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromLocal")
+	defer span.End()
+
 	httpClient, err := opts.HttpClient()
 	if err != nil {
 		return err

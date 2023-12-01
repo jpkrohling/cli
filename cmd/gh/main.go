@@ -22,11 +22,13 @@ import (
 	"github.com/cli/cli/v2/pkg/cmd/root"
 	"github.com/cli/cli/v2/pkg/cmdutil"
 	"github.com/cli/cli/v2/pkg/iostreams"
+	"github.com/cli/cli/v2/pkg/telemetry"
 	"github.com/cli/cli/v2/utils"
 	"github.com/cli/safeexec"
 	"github.com/mattn/go-isatty"
 	"github.com/mgutz/ansi"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 )
 
 var updaterEnabled = ""
@@ -50,11 +52,23 @@ func mainRun() exitCode {
 	buildDate := build.Date
 	buildVersion := build.Version
 	hasDebug, _ := utils.IsDebugEnabled()
+	ctx := context.Background()
+
+	cancel, err := telemetry.Bootstrap(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize telemetry: %s\n", err)
+		return exitError
+	}
+	defer cancel()
+
+	tp := otel.GetTracerProvider()
+	tracer := tp.Tracer("github.com/cli/cli")
+
+	ctx, span := tracer.Start(ctx, "main")
+	defer span.End()
 
 	cmdFactory := factory.New(buildVersion)
 	stderr := cmdFactory.IOStreams.ErrOut
-
-	ctx := context.Background()
 
 	updateCtx, updateCancel := context.WithCancel(ctx)
 	defer updateCancel()
