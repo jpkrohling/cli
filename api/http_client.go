@@ -10,6 +10,7 @@ import (
 	"github.com/cli/cli/v2/internal/ghinstance"
 	"github.com/cli/cli/v2/utils"
 	ghAPI "github.com/cli/go-gh/v2/pkg/api"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type tokenGetter interface {
@@ -68,6 +69,8 @@ func NewHTTPClient(opts HTTPClientOptions) (*http.Client, error) {
 	if opts.Config != nil {
 		client.Transport = AddAuthTokenHeader(client.Transport, opts.Config)
 	}
+
+	client.Transport = otelhttp.NewTransport(client.Transport)
 
 	return client, nil
 }

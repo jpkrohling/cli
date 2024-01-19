@@ -24,6 +24,8 @@ import (
 	"github.com/cli/cli/v2/pkg/iostreams"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type errWithExitCode interface {
@@ -285,32 +287,54 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 
 	httpClient, err := opts.HttpClient()
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 		return err
 	}
 
 	var repoToCreate ghrepo.Interface
 	cfg, err := opts.Config()
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 		return err
 	}
 
 	host, _ := cfg.Authentication().DefaultHost()
 
+	user, _ := cfg.Authentication().User(host)
+	span.SetAttributes(
+		attribute.String("user.name", user),
+		attribute.String("host", host),
+		attribute.String("visibility", opts.Visibility),
+		attribute.String("name", opts.Name),
+	)
+
 	if opts.Interactive {
+		span.SetAttributes(attribute.Bool("interactive", true))
+
 		opts.Name, opts.Description, opts.Visibility, err = interactiveRepoInfo(httpClient, host, opts.Prompter, "")
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 		opts.AddReadme, err = opts.Prompter.Confirm("Would you like to add a README file?", false)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 		opts.GitIgnoreTemplate, err = interactiveGitIgnore(httpClient, host, opts.Prompter)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 		opts.LicenseTemplate, err = interactiveLicense(httpClient, host, opts.Prompter)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 
@@ -320,17 +344,26 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		}
 		confirmed, err := opts.Prompter.Confirm(fmt.Sprintf(`This will create "%s" as a %s repository on GitHub. Continue?`, targetRepo, strings.ToLower(opts.Visibility)), true)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		} else if !confirmed {
 			return cmdutil.CancelError
 		}
+
+		span.AddEvent("action confirmed")
+	} else {
+		span.SetAttributes(attribute.Bool("interactive", false))
 	}
 
 	if strings.Contains(opts.Name, "/") {
 		var err error
 		repoToCreate, err = ghrepo.FromFullName(opts.Name)
 		if err != nil {
-			return fmt.Errorf("argument error: %w", err)
+			err = fmt.Errorf("argument error: %w", err)
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+			return err
 		}
 	} else {
 		repoToCreate = ghrepo.NewWithHost("", opts.Name, host)
@@ -360,17 +393,25 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		if !strings.Contains(templateRepoName, "/") {
 			currentUser, err := api.CurrentLoginName(apiClient, host)
 			if err != nil {
+				span.SetStatus(codes.Error, err.Error())
+				span.RecordError(err)
 				return err
 			}
 			templateRepoName = currentUser + "/" + templateRepoName
 		}
 		templateRepo, err = ghrepo.FromFullName(templateRepoName)
 		if err != nil {
-			return fmt.Errorf("argument error: %w", err)
+			err = fmt.Errorf("argument error: %w", err)
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
+			return err
 		}
 
+		span.AddEvent("obtaining templates")
 		repo, err := api.GitHubRepo(apiClient, templateRepo)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 
@@ -378,8 +419,13 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		templateRepoMainBranch = repo.DefaultBranchRef.Name
 	}
 
+	span.AddEvent("creating repo")
 	repo, err := repoCreate(httpClient, repoToCreate.RepoHost(), input)
+	span.AddEvent("created repo")
+
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
 		return err
 	}
 
@@ -398,6 +444,8 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		var err error
 		opts.Clone, err = opts.Prompter.Confirm("Clone the new repository locally?", true)
 		if err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 	}
@@ -409,9 +457,13 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		if !opts.AddReadme && opts.LicenseTemplate == "" && opts.GitIgnoreTemplate == "" && opts.Template == "" {
 			// cloning empty repository or template
 			if err := localInit(opts.GitClient, remoteURL, repo.RepoName()); err != nil {
+				span.SetStatus(codes.Error, err.Error())
+				span.RecordError(err)
 				return err
 			}
 		} else if err := cloneWithRetry(opts, remoteURL, templateRepoMainBranch); err != nil {
+			span.SetStatus(codes.Error, err.Error())
+			span.RecordError(err)
 			return err
 		}
 
