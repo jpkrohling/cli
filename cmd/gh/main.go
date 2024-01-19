@@ -102,7 +102,7 @@ func mainRun() exitCode {
 		cobra.MousetrapHelpText = ""
 	}
 
-	rootCmd, err := root.NewCmdRoot(cmdFactory, buildVersion, buildDate)
+	rootCmd, err := root.NewCmdRoot(ctx, cmdFactory, buildVersion, buildDate)
 	if err != nil {
 		fmt.Fprintf(stderr, "failed to create root command: %s\n", err)
 		return exitError

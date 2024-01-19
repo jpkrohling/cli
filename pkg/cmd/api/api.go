@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,7 +56,7 @@ type ApiOptions struct {
 	Verbose             bool
 }
 
-func NewCmdApi(f *cmdutil.Factory, runF func(*ApiOptions) error) *cobra.Command {
+func NewCmdApi(ctx context.Context, f *cmdutil.Factory, runF func(*ApiOptions) error) *cobra.Command {
 	opts := ApiOptions{
 		AppVersion: f.AppVersion,
 		BaseRepo:   f.BaseRepo,
@@ -222,7 +223,7 @@ func NewCmdApi(f *cmdutil.Factory, runF func(*ApiOptions) error) *cobra.Command 
 			if runF != nil {
 				return runF(&opts)
 			}
-			return apiRun(&opts)
+			return apiRun(ctx, &opts)
 		},
 	}
 
@@ -243,7 +244,7 @@ func NewCmdApi(f *cmdutil.Factory, runF func(*ApiOptions) error) *cobra.Command 
 	return cmd
 }
 
-func apiRun(opts *ApiOptions) error {
+func apiRun(ctx context.Context, opts *ApiOptions) error {
 	params, err := parseFields(opts)
 	if err != nil {
 		return err
@@ -349,7 +350,7 @@ func apiRun(opts *ApiOptions) error {
 	isFirstPage := true
 	hasNextPage := true
 	for hasNextPage {
-		resp, err := httpRequest(httpClient, host, method, requestPath, requestBody, requestHeaders)
+		resp, err := httpRequest(ctx, httpClient, host, method, requestPath, requestBody, requestHeaders)
 		if err != nil {
 			return err
 		}

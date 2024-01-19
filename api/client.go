@@ -53,6 +53,18 @@ func (err HTTPError) ScopesSuggestion() string {
 
 // GraphQL performs a GraphQL request using the query string and parses the response into data receiver. If there are errors in the response,
 // GraphQLError will be returned, but the receiver will also be partially populated.
+func (c Client) GraphQLWithContext(ctx context.Context, hostname string, query string, variables map[string]interface{}, data interface{}) error {
+	opts := clientOptions(hostname, c.http.Transport)
+	opts.Headers[graphqlFeatures] = features
+	gqlClient, err := ghAPI.NewGraphQLClient(opts)
+	if err != nil {
+		return err
+	}
+	return handleResponse(gqlClient.DoWithContext(ctx, query, variables, data))
+}
+
+// GraphQL performs a GraphQL request using the query string and parses the response into data receiver. If there are errors in the response,
+// GraphQLError will be returned, but the receiver will also be partially populated.
 func (c Client) GraphQL(hostname string, query string, variables map[string]interface{}, data interface{}) error {
 	opts := clientOptions(hostname, c.http.Transport)
 	opts.Headers[graphqlFeatures] = features

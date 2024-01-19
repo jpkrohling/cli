@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,7 +14,7 @@ import (
 	"github.com/cli/cli/v2/internal/ghinstance"
 )
 
-func httpRequest(client *http.Client, hostname string, method string, p string, params interface{}, headers []string) (*http.Response, error) {
+func httpRequest(ctx context.Context, client *http.Client, hostname string, method string, p string, params interface{}, headers []string) (*http.Response, error) {
 	isGraphQL := p == "graphql"
 	var requestURL string
 	if strings.Contains(p, "://") {
@@ -50,7 +51,8 @@ func httpRequest(client *http.Client, hostname string, method string, p string, 
 		return nil, fmt.Errorf("unrecognized parameters type: %v", params)
 	}
 
-	req, err := http.NewRequest(strings.ToUpper(method), requestURL, body)
+	req, err := http.NewRequestWithContext(ctx, strings.ToUpper(method), requestURL, body)
+
 	if err != nil {
 		return nil, err
 	}

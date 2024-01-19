@@ -282,7 +282,7 @@ func createRun(ctx context.Context, opts *CreateOptions) error {
 
 // create new repo on remote host
 func createFromScratch(ctx context.Context, opts *CreateOptions) error {
-	_, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromScratch")
+	ctx, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromScratch")
 	defer span.End()
 
 	httpClient, err := opts.HttpClient()
@@ -420,7 +420,7 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 	}
 
 	span.AddEvent("creating repo")
-	repo, err := repoCreate(httpClient, repoToCreate.RepoHost(), input)
+	repo, err := repoCreate(ctx, httpClient, repoToCreate.RepoHost(), input)
 	span.AddEvent("created repo")
 
 	if err != nil {
@@ -506,7 +506,7 @@ func createFromTemplate(ctx context.Context, opts *CreateOptions) error {
 		return fmt.Errorf("argument error: %w", err)
 	}
 
-	templateRepo, err := interactiveRepoTemplate(httpClient, host, repoToCreate.RepoOwner(), opts.Prompter)
+	templateRepo, err := interactiveRepoTemplate(ctx, httpClient, host, repoToCreate.RepoOwner(), opts.Prompter)
 	if err != nil {
 		return err
 	}
@@ -538,7 +538,7 @@ func createFromTemplate(ctx context.Context, opts *CreateOptions) error {
 		return cmdutil.CancelError
 	}
 
-	repo, err := repoCreate(httpClient, repoToCreate.RepoHost(), input)
+	repo, err := repoCreate(ctx, httpClient, repoToCreate.RepoHost(), input)
 	if err != nil {
 		return err
 	}
@@ -666,7 +666,7 @@ func createFromLocal(ctx context.Context, opts *CreateOptions) error {
 		LicenseTemplate:   opts.LicenseTemplate,
 	}
 
-	repo, err := repoCreate(httpClient, repoToCreate.RepoHost(), input)
+	repo, err := repoCreate(ctx, httpClient, repoToCreate.RepoHost(), input)
 	if err != nil {
 		return err
 	}
@@ -834,8 +834,8 @@ func localInit(gitClient *git.Client, remoteURL, path string) error {
 	return nil
 }
 
-func interactiveRepoTemplate(client *http.Client, hostname, owner string, prompter iprompter) (*api.Repository, error) {
-	templateRepos, err := listTemplateRepositories(client, hostname, owner)
+func interactiveRepoTemplate(ctx context.Context, client *http.Client, hostname, owner string, prompter iprompter) (*api.Repository, error) {
+	templateRepos, err := listTemplateRepositories(ctx, client, hostname, owner)
 	if err != nil {
 		return nil, err
 	}

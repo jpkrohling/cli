@@ -2,6 +2,7 @@ package create
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -73,7 +74,7 @@ type updateRepositoryInput struct {
 }
 
 // repoCreate creates a new GitHub repository
-func repoCreate(client *http.Client, hostname string, input repoCreateInput) (*api.Repository, error) {
+func repoCreate(ctx context.Context, client *http.Client, hostname string, input repoCreateInput) (*api.Repository, error) {
 	isOrg := false
 	var ownerID string
 	var teamID string
@@ -125,7 +126,7 @@ func repoCreate(client *http.Client, hostname string, input repoCreateInput) (*a
 			},
 		}
 
-		err := apiClient.GraphQL(hostname, `
+		err := apiClient.GraphQLWithContext(ctx, hostname, `
 		mutation CloneTemplateRepository($input: CloneTemplateRepositoryInput!) {
 			cloneTemplateRepository(input: $input) {
 				repository {
@@ -151,7 +152,7 @@ func repoCreate(client *http.Client, hostname string, input repoCreateInput) (*a
 				},
 			}
 
-			if err := apiClient.GraphQL(hostname, `
+			if err := apiClient.GraphQLWithContext(ctx, hostname, `
 				mutation UpdateRepository($input: UpdateRepositoryInput!) {
 					updateRepository(input: $input) {
 						repository {
@@ -219,7 +220,7 @@ func repoCreate(client *http.Client, hostname string, input repoCreateInput) (*a
 		},
 	}
 
-	err := apiClient.GraphQL(hostname, `
+	err := apiClient.GraphQLWithContext(ctx, hostname, `
 	mutation RepositoryCreate($input: CreateRepositoryInput!) {
 		createRepository(input: $input) {
 			repository {
@@ -267,7 +268,7 @@ func resolveOrganizationTeam(client *api.Client, hostname, orgName, teamSlug str
 	return &response, err
 }
 
-func listTemplateRepositories(client *http.Client, hostname, owner string) ([]api.Repository, error) {
+func listTemplateRepositories(ctx context.Context, client *http.Client, hostname, owner string) ([]api.Repository, error) {
 	ownerConnection := "repositoryOwner(login: $owner)"
 
 	variables := map[string]interface{}{
@@ -312,7 +313,7 @@ func listTemplateRepositories(client *http.Client, hostname, owner string) ([]ap
 	var templateRepositories []api.Repository
 	for {
 		var res result
-		err := apiClient.GraphQL(hostname, query, variables, &res)
+		err := apiClient.GraphQLWithContext(ctx, hostname, query, variables, &res)
 		if err != nil {
 			return nil, err
 		}
