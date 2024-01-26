@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -130,7 +131,7 @@ type MetadataFetcher struct {
 
 func (mf *MetadataFetcher) RepoMetadataFetch(input api.RepoMetadataInput) (*api.RepoMetadataResult, error) {
 	mf.IO.StartProgressIndicator()
-	metadataResult, err := api.RepoMetadata(mf.APIClient, mf.Repo, input)
+	metadataResult, err := api.RepoMetadata(context.Background(), mf.APIClient, mf.Repo, input)
 	mf.IO.StopProgressIndicator()
 	mf.State.MetadataResult = metadataResult
 	return metadataResult, err

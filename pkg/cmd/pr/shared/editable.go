@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -384,7 +385,7 @@ func FetchOptions(client *api.Client, repo ghrepo.Interface, editable *Editable)
 		Projects:   editable.Projects.Edited,
 		Milestones: editable.Milestone.Edited,
 	}
-	metadata, err := api.RepoMetadata(client, repo, input)
+	metadata, err := api.RepoMetadata(context.Background(), client, repo, input)
 	if err != nil {
 		return err
 	}

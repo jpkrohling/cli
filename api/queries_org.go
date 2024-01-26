@@ -1,12 +1,14 @@
 package api
 
 import (
+	"context"
+
 	"github.com/cli/cli/v2/internal/ghrepo"
 	"github.com/shurcooL/githubv4"
 )
 
 // OrganizationProjects fetches all open projects for an organization.
-func OrganizationProjects(client *Client, repo ghrepo.Interface) ([]RepoProject, error) {
+func OrganizationProjects(ctx context.Context, client *Client, repo ghrepo.Interface) ([]RepoProject, error) {
 	type responseData struct {
 		Organization struct {
 			Projects struct {

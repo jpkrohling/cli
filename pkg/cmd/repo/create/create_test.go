@@ -2,6 +2,7 @@ package create
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -853,7 +854,7 @@ func Test_createRun(t *testing.T) {
 			}
 
 			defer reg.Verify(t)
-			err := createRun(tt.opts)
+			err := createRun(context.Background(), tt.opts)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Equal(t, tt.errMsg, err.Error())

@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -14,7 +15,7 @@ import (
 func RequestableReviewersForCompletion(httpClient *http.Client, repo ghrepo.Interface) ([]string, error) {
 	client := api.NewClientFromHTTP(api.NewCachedHTTPClient(httpClient, time.Minute*2))
 
-	metadata, err := api.RepoMetadata(client, repo, api.RepoMetadataInput{Reviewers: true})
+	metadata, err := api.RepoMetadata(context.Background(), client, repo, api.RepoMetadataInput{Reviewers: true})
 	if err != nil {
 		return nil, err
 	}

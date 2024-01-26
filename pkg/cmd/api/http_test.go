@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"testing"
@@ -285,7 +286,7 @@ func Test_httpRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := httpRequest(tt.args.client, tt.args.host, tt.args.method, tt.args.p, tt.args.params, tt.args.headers)
+			got, err := httpRequest(context.Background(), tt.args.client, tt.args.host, tt.args.method, tt.args.p, tt.args.params, tt.args.headers)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("httpRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return

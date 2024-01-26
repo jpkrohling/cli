@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -31,7 +32,7 @@ func WithPrAndIssueQueryParams(client *api.Client, baseRepo ghrepo.Interface, ba
 		q.Set("labels", strings.Join(state.Labels, ","))
 	}
 	if len(state.Projects) > 0 {
-		projectPaths, err := api.ProjectNamesToPaths(client, baseRepo, state.Projects)
+		projectPaths, err := api.ProjectNamesToPaths(context.Background(), client, baseRepo, state.Projects)
 		if err != nil {
 			return "", fmt.Errorf("could not add to project: %w", err)
 		}
@@ -74,7 +75,7 @@ func fillMetadata(client *api.Client, baseRepo ghrepo.Interface, tb *IssueMetada
 		resolveInput.Milestones = tb.Milestones
 	}
 
-	metadataResult, err := api.RepoResolveMetadataIDs(client, baseRepo, resolveInput)
+	metadataResult, err := api.RepoResolveMetadataIDs(context.Background(), client, baseRepo, resolveInput)
 	if err != nil {
 		return err
 	}

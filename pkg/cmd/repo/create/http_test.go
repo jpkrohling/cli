@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -688,7 +689,7 @@ func Test_repoCreate(t *testing.T) {
 			defer reg.Verify(t)
 			tt.stubs(t, reg)
 			httpClient := &http.Client{Transport: reg}
-			r, err := repoCreate(httpClient, tt.hostname, tt.input)
+			r, err := repoCreate(context.Background(), httpClient, tt.hostname, tt.input)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return

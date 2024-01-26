@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -354,7 +355,7 @@ func Test_NewCmdApi(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var opts *ApiOptions
-			cmd := NewCmdApi(f, func(o *ApiOptions) error {
+			cmd := NewCmdApi(context.Background(), f, func(o *ApiOptions) error {
 				opts = o
 				return nil
 			})
@@ -396,7 +397,7 @@ func Test_NewCmdApi_WindowsAbsPath(t *testing.T) {
 		t.SkipNow()
 	}
 
-	cmd := NewCmdApi(&cmdutil.Factory{}, func(opts *ApiOptions) error {
+	cmd := NewCmdApi(context.Background(), &cmdutil.Factory{}, func(opts *ApiOptions) error {
 		return nil
 	})
 
@@ -629,7 +630,7 @@ func Test_apiRun(t *testing.T) {
 				return &http.Client{Transport: tr}, nil
 			}
 
-			err := apiRun(&tt.options)
+			err := apiRun(context.Background(), &tt.options)
 			if err != tt.err {
 				t.Errorf("expected error %v, got %v", tt.err, err)
 			}
@@ -692,7 +693,7 @@ func Test_apiRun_paginationREST(t *testing.T) {
 		RawFields:           []string{"per_page=50", "page=1"},
 	}
 
-	err := apiRun(&options)
+	err := apiRun(context.Background(), &options)
 	assert.NoError(t, err)
 
 	assert.Equal(t, `{"page":1}{"page":2}{"page":3}`, stdout.String(), "stdout")
@@ -764,7 +765,7 @@ func Test_apiRun_arrayPaginationREST(t *testing.T) {
 		RawFields:           []string{"per_page=50", "page=1"},
 	}
 
-	err := apiRun(&options)
+	err := apiRun(context.Background(), &options)
 	assert.NoError(t, err)
 
 	assert.Equal(t, `[{"item":1},{"item":2},{"item":3},{"item":4},{"item":5} ]`, stdout.String(), "stdout")
@@ -829,7 +830,7 @@ func Test_apiRun_paginationGraphQL(t *testing.T) {
 		Paginate:      true,
 	}
 
-	err := apiRun(&options)
+	err := apiRun(context.Background(), &options)
 	require.NoError(t, err)
 
 	assert.Contains(t, stdout.String(), `"page one"`)
@@ -923,7 +924,7 @@ func Test_apiRun_paginated_template(t *testing.T) {
 		Template: `{{range .data.nodes}}{{tablerow .page .caption}}{{end}}`,
 	}
 
-	err := apiRun(&options)
+	err := apiRun(context.Background(), &options)
 	require.NoError(t, err)
 
 	assert.Equal(t, heredoc.Doc(`
@@ -956,7 +957,7 @@ func Test_apiRun_DELETE(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 
 	var gotRequest *http.Request
-	err := apiRun(&ApiOptions{
+	err := apiRun(context.Background(), &ApiOptions{
 		IO: ios,
 		Config: func() (config.Config, error) {
 			return config.NewBlankConfig(), nil
@@ -1048,7 +1049,7 @@ func Test_apiRun_inputFile(t *testing.T) {
 				},
 			}
 
-			err := apiRun(&options)
+			err := apiRun(context.Background(), &options)
 			if err != nil {
 				t.Errorf("got error %v", err)
 			}
@@ -1091,9 +1092,9 @@ func Test_apiRun_cache(t *testing.T) {
 		os.RemoveAll(cacheDir)
 	})
 
-	err := apiRun(&options)
+	err := apiRun(context.Background(), &options)
 	assert.NoError(t, err)
-	err = apiRun(&options)
+	err = apiRun(context.Background(), &options)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 2, requestCount)

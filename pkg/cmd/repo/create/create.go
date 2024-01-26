@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type errWithExitCode interface {
@@ -67,6 +68,15 @@ type CreateOptions struct {
 	IncludeAllBranches bool
 	AddReadme          bool
 }
+
+var createFromTemplateCounter, _ = otel.Meter("github.com/cli/cli").Int64Counter(
+	"repo.createFromTemplate",
+	metric.WithDescription("Number of times a repo was created from a template"),
+)
+var createFromScratchCounter, _ = otel.Meter("github.com/cli/cli").Int64Counter(
+	"repo.createFromScratch",
+	metric.WithDescription("Number of times a repo was created from scratch"),
+)
 
 func NewCmdCreate(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
@@ -282,8 +292,13 @@ func createRun(ctx context.Context, opts *CreateOptions) error {
 
 // create new repo on remote host
 func createFromScratch(ctx context.Context, opts *CreateOptions) error {
+	time.Sleep(20 * time.Millisecond)
 	ctx, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromScratch")
 	defer span.End()
+
+	createFromScratchCounter.Add(ctx, 1,
+		metric.WithAttributes(attribute.String("visibility", opts.Visibility)),
+	)
 
 	httpClient, err := opts.HttpClient()
 	if err != nil {
@@ -291,6 +306,7 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		span.RecordError(err)
 		return err
 	}
+	span.AddEvent("obtained http client")
 
 	var repoToCreate ghrepo.Interface
 	cfg, err := opts.Config()
@@ -299,6 +315,7 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		span.RecordError(err)
 		return err
 	}
+	span.AddEvent("obtained config")
 
 	host, _ := cfg.Authentication().DefaultHost()
 
@@ -309,6 +326,7 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		attribute.String("visibility", opts.Visibility),
 		attribute.String("name", opts.Name),
 	)
+	span.AddEvent("got user information")
 
 	if opts.Interactive {
 		span.SetAttributes(attribute.Bool("interactive", true))
@@ -368,6 +386,7 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 	} else {
 		repoToCreate = ghrepo.NewWithHost("", opts.Name, host)
 	}
+	span.AddEvent("determined repo to create")
 
 	input := repoCreateInput{
 		Name:               repoToCreate.RepoName(),
@@ -383,6 +402,7 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 		IncludeAllBranches: opts.IncludeAllBranches,
 		InitReadme:         opts.AddReadme,
 	}
+	span.AddEvent("built repe input")
 
 	var templateRepoMainBranch string
 	if opts.Template != "" {
@@ -474,8 +494,12 @@ func createFromScratch(ctx context.Context, opts *CreateOptions) error {
 
 // create new repo on remote host from template repo
 func createFromTemplate(ctx context.Context, opts *CreateOptions) error {
-	_, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromTemplate")
+	ctx, span := otel.Tracer("github.com/cli/cli").Start(ctx, "createFromTemplate")
 	defer span.End()
+
+	createFromTemplateCounter.Add(ctx, 1,
+		metric.WithAttributes(attribute.String("visibility", opts.Visibility)),
+	)
 
 	httpClient, err := opts.HttpClient()
 	if err != nil {
